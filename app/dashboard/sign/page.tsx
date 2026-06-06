@@ -3,14 +3,13 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { PDFViewer } from '@/components/pdf-viewer'
-import { SignatureCanvas } from '@/components/signature-canvas'
+import { PDFEditor } from '@/components/pdf-editor'
+import { EditorElement } from '@/lib/editor-types'
 
 export default function SignPage() {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
-  const [showSignatureModal, setShowSignatureModal] = useState(false)
-  const [signature, setSignature] = useState<string | null>(null)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,6 +18,8 @@ export default function SignPage() {
       const selectedFile = files[0]
       if (selectedFile.type === 'application/pdf') {
         setFile(selectedFile)
+        const url = URL.createObjectURL(selectedFile)
+        setPdfUrl(url)
       } else {
         alert('Please select a PDF file')
       }
@@ -29,18 +30,30 @@ export default function SignPage() {
     fileInputRef.current?.click()
   }
 
-  const handleSignatureSave = (dataUrl: string) => {
-    setSignature(dataUrl)
-    setShowSignatureModal(false)
+  const handleEditorFinish = (elements: EditorElement[]) => {
+    console.log('[v0] Signing complete with elements:', elements)
+    
+    // Save document to localStorage
+    const documentId = Math.random().toString(36).substr(2, 9)
+    const document = {
+      id: documentId,
+      name: file?.name || 'document.pdf',
+      uploadedAt: new Date().toISOString(),
+      signedAt: new Date().toISOString(),
+      signatures: elements.filter((el) => el.type === 'signature').length,
+      elements,
+    }
+    
+    const stored = localStorage.getItem('flowsign_documents')
+    const documents = stored ? JSON.parse(stored) : []
+    documents.push(document)
+    localStorage.setItem('flowsign_documents', JSON.stringify(documents))
+
+    alert('Document signed successfully! Redirecting to documents...')
+    router.push('/dashboard/documents')
   }
 
-  const handleDownloadSigned = () => {
-    if (!signature || !file) return
-    console.log('[v0] Download signed document:', { file: file.name, signature })
-    alert('Signed document would be downloaded here')
-  }
-
-  if (!file) {
+  if (!file || !pdfUrl) {
     return (
       <div className="space-y-8">
         <div className="text-center py-12">
@@ -83,56 +96,36 @@ export default function SignPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-card border border-border p-4 rounded-lg">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Sign Document</h2>
           <p className="text-muted-foreground text-sm mt-1">{file.name}</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setFile(null)}
-            className="px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-          >
-            Change File
-          </button>
-          {signature && (
-            <Button
-              onClick={handleDownloadSigned}
-              className="bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-            >
-              Download Signed
-            </Button>
-          )}
-        </div>
+        <button
+          onClick={() => {
+            setFile(null)
+            setPdfUrl(null)
+          }}
+          className="px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+        >
+          Change File
+        </button>
       </div>
 
-      {/* PDF Viewer */}
-      <PDFViewer
-        file={file}
-        onSignClick={() => setShowSignatureModal(true)}
+      {/* PDF Editor */}
+      <div className="flex-1 min-h-0 bg-card border border-border rounded-lg overflow-hidden">
+        <PDFEditor pdfUrl={pdfUrl} onFinish={handleEditorFinish} />
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf"
+        onChange={handleFileChange}
+        className="hidden"
       />
-
-      {/* Signature Display */}
-      {signature && (
-        <div className="bg-card border border-border rounded-lg p-6">
-          <p className="text-sm text-muted-foreground mb-4">Your Signature</p>
-          <img
-            src={signature}
-            alt="Your signature"
-            className="h-24 bg-white rounded-lg border border-border"
-          />
-        </div>
-      )}
-
-      {/* Signature Modal */}
-      {showSignatureModal && (
-        <SignatureCanvas
-          onClose={() => setShowSignatureModal(false)}
-          onSave={handleSignatureSave}
-        />
-      )}
     </div>
   )
 }
