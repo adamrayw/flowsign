@@ -11,9 +11,8 @@ const initPdfWorker = async () => {
   if (typeof window !== 'undefined' && !workerInitialized) {
     const pdfModule = await import('pdfjs-dist')
     pdfjsLib = pdfModule
-    // Import and set the worker directly
-    const { default: PdfWorker } = await import('pdfjs-dist/build/pdf.worker.min.mjs')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker
+    // Set worker source to public file
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
     workerInitialized = true
   }
   return pdfjsLib
