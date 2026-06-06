@@ -1,12 +1,22 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import * as pdfjsLib from 'pdfjs-dist'
 import { Button } from './ui/button'
 
-// Set the worker source
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+let pdfjsLib: any = null
+let workerInitialized = false
+
+// Lazy load PDF.js worker setup
+const initPdfWorker = async () => {
+  if (typeof window !== 'undefined' && !workerInitialized) {
+    const pdfModule = await import('pdfjs-dist')
+    pdfjsLib = pdfModule
+    // Import and set the worker directly
+    const { default: PdfWorker } = await import('pdfjs-dist/build/pdf.worker.min.mjs')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker
+    workerInitialized = true
+  }
+  return pdfjsLib
 }
 
 interface PDFViewerProps {
@@ -23,8 +33,9 @@ export function PDFViewer({ file, onSignClick }: PDFViewerProps) {
   useEffect(() => {
     const loadPDF = async () => {
       try {
+        const pdfModule = await initPdfWorker()
         const arrayBuffer = await file.arrayBuffer()
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+        const pdf = await pdfModule.getDocument({ data: arrayBuffer }).promise
         setPdf(pdf)
         setNumPages(pdf.numPages)
         renderPage(pdf, 1)

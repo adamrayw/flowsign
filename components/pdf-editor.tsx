@@ -8,12 +8,17 @@ import { ElementType } from '@/lib/editor-types'
 import { Button } from '@/components/ui/button'
 
 let pdfjsLib: any = null
+let workerInitialized = false
 
 // Lazy load PDF.js worker setup
 const initPdfWorker = async () => {
-  if (typeof window !== 'undefined' && !pdfjsLib) {
-    pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+  if (typeof window !== 'undefined' && !workerInitialized) {
+    const pdfModule = await import('pdfjs-dist')
+    pdfjsLib = pdfModule
+    // Import and set the worker directly
+    const { default: PdfWorker } = await import('pdfjs-dist/build/pdf.worker.min.mjs')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker
+    workerInitialized = true
   }
   return pdfjsLib
 }
