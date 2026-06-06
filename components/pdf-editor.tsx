@@ -49,8 +49,19 @@ export function PDFEditor({ pdfUrl, onFinish }: PDFEditorProps) {
   useEffect(() => {
     const loadPDF = async () => {
       try {
+        if (!pdfUrl) {
+          console.log('[v0] No PDF URL provided')
+          return
+        }
+
         const pdf = await initPdfWorker()
-        const doc = await pdf.getDocument(pdfUrl).promise
+        
+        // Fetch the PDF data from the blob URL
+        const response = await fetch(pdfUrl)
+        const arrayBuffer = await response.arrayBuffer()
+        
+        // Load PDF from array buffer
+        const doc = await pdf.getDocument({ data: new Uint8Array(arrayBuffer) }).promise
         setTotalPages(doc.numPages)
 
         const pages: HTMLCanvasElement[] = []
