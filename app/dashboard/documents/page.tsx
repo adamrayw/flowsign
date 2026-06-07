@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { EditorElement } from '@/lib/editor-types'
 
 interface StoredDocument {
   id: string
@@ -10,9 +12,14 @@ interface StoredDocument {
   uploadedAt: string
   signedAt?: string
   signatures: number
+  elements?: EditorElement[]
+  originalPdfDataUrl?: string
+  signedPdfDataUrl?: string
+  status?: 'draft' | 'signed'
 }
 
 export default function DocumentsPage() {
+  const router = useRouter()
   const [documents, setDocuments] = useState<StoredDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -33,6 +40,31 @@ export default function DocumentsPage() {
     setDocuments((prev) => prev.filter((doc) => doc.id !== id))
     const remaining = documents.filter((doc) => doc.id !== id)
     localStorage.setItem('flowsign_documents', JSON.stringify(remaining))
+  }
+
+  const handleDownload = (doc: StoredDocument) => {
+    if (!doc.signedPdfDataUrl) {
+      alert('This document was saved before download support was added. Please sign it again to enable download.')
+      return
+    }
+
+    const baseName = doc.name.replace(/\.pdf$/i, '')
+    const link = document.createElement('a')
+    link.href = doc.signedPdfDataUrl
+    link.download = `${baseName || 'document'}-signed.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  const handleEdit = (doc: StoredDocument) => {
+    if (!doc.originalPdfDataUrl && !doc.signedPdfDataUrl) {
+      alert('This document cannot be edited. Please sign it again from the original PDF.')
+      return
+    }
+
+    localStorage.setItem('flowsign_edit_document', JSON.stringify(doc))
+    router.push('/dashboard/sign')
   }
 
   if (isLoading) {
@@ -94,11 +126,21 @@ export default function DocumentsPage() {
                       Signed: {new Date(doc.signedAt).toLocaleDateString()}
                     </span>
                   )}
+                  {doc.status === 'draft' && <span>Draft</span>}
                   <span>{doc.signatures} signature(s)</span>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button className="px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-colors">
+                <button
+                  onClick={() => handleEdit(doc)}
+                  className="px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDownload(doc)}
+                  className="px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                >
                   Download
                 </button>
                 <button

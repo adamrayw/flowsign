@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import type {
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import { EditorElement } from '@/lib/editor-types'
 import { EditorElementComponent } from './editor-element'
 
@@ -11,7 +15,28 @@ interface EditorOverlayProps {
   onSelectElement: (id: string | null) => void
   onUpdateElement: (id: string, updates: Partial<EditorElement>) => void
   onShowContextMenu: (id: string, x: number, y: number) => void
-  pdfContainerRef: React.RefObject<HTMLDivElement>
+}
+
+interface DragState {
+  id: string
+  pointerId: number
+  offsetX: number
+  offsetY: number
+}
+
+interface ResizeState {
+  id: string
+  handle: string
+  pointerId: number
+  startX: number
+  startY: number
+  startWidth: number
+  startHeight: number
+}
+
+const clamp = (value: number, min: number, max: number) => {
+  if (max < min) return min
+  return Math.min(Math.max(value, min), max)
 }
 
 export function EditorOverlay({
@@ -21,112 +46,155 @@ export function EditorOverlay({
   onSelectElement,
   onUpdateElement,
   onShowContextMenu,
-  pdfContainerRef,
 }: EditorOverlayProps) {
-  const [draggedElementId, setDraggedElementId] = useState<string | null>(null)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [resizingHandle, setResizingHandle] = useState<string | null>(null)
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 })
+  const [dragState, setDragState] = useState<DragState | null>(null)
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
   const pageElements = elements.filter((el) => el.page === currentPage)
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  const getOverlaySize = () => {
+    const overlay = overlayRef.current
+    return {
+      width: overlay?.offsetWidth ?? 0,
+      height: overlay?.offsetHeight ?? 0,
+    }
+  }
+
+  const getOverlayPoint = (clientX: number, clientY: number) => {
+    const overlay = overlayRef.current
+    if (!overlay) return { x: 0, y: 0 }
+
+    const rect = overlay.getBoundingClientRect()
+    const scaleX = rect.width > 0 ? overlay.offsetWidth / rect.width : 1
+    const scaleY = rect.height > 0 ? overlay.offsetHeight / rect.height : 1
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    }
+  }
+
+  const handleMouseDown = (e: ReactMouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
     onSelectElement(null)
   }
 
-  const handleElementDragStart = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setDraggedElementId(id)
-    setDragStart({ x: e.clientX, y: e.clientY })
-  }
-
-  const handleResizeStart = (id: string, handle: string, e: React.MouseEvent) => {
+  const handleElementDragStart = (id: string, e: ReactPointerEvent<HTMLDivElement>) => {
     e.stopPropagation()
     const element = elements.find((el) => el.id === id)
     if (!element) return
 
-    setResizingHandle(handle)
-    setResizeStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: element.width,
-      height: element.height,
+    const point = getOverlayPoint(e.clientX, e.clientY)
+
+    setDragState({
+      id,
+      pointerId: e.pointerId,
+      offsetX: point.x - element.x,
+      offsetY: point.y - element.y,
+    })
+  }
+
+  const handleResizeStart = (
+    id: string,
+    handle: string,
+    e: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    e.stopPropagation()
+    const element = elements.find((el) => el.id === id)
+    if (!element) return
+
+    setResizeState({
+      id,
+      handle,
+      pointerId: e.pointerId,
+      startX: element.x,
+      startY: element.y,
+      startWidth: element.width,
+      startHeight: element.height,
     })
   }
 
   useEffect(() => {
-    if (!draggedElementId && !resizingHandle) return
+    if (!dragState && !resizeState) return
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (draggedElementId) {
-        const element = elements.find((el) => el.id === draggedElementId)
+    const handlePointerMove = (e: PointerEvent) => {
+      if (dragState && e.pointerId === dragState.pointerId) {
+        const element = elements.find((el) => el.id === dragState.id)
         if (!element) return
 
-        const dx = e.clientX - dragStart.x
-        const dy = e.clientY - dragStart.y
+        e.preventDefault()
 
-        // Snap to grid (10px)
-        const snappedX = Math.round((element.x + dx) / 10) * 10
-        const snappedY = Math.round((element.y + dy) / 10) * 10
+        const point = getOverlayPoint(e.clientX, e.clientY)
+        const overlaySize = getOverlaySize()
 
-        onUpdateElement(draggedElementId, {
-          x: Math.max(0, snappedX),
-          y: Math.max(0, snappedY),
+        onUpdateElement(dragState.id, {
+          x: clamp(point.x - dragState.offsetX, 0, overlaySize.width - element.width),
+          y: clamp(point.y - dragState.offsetY, 0, overlaySize.height - element.height),
         })
+      } else if (resizeState && e.pointerId === resizeState.pointerId) {
+        if (!elements.some((el) => el.id === resizeState.id)) return
 
-        setDragStart({ x: e.clientX, y: e.clientY })
-      } else if (resizingHandle) {
-        const element = elements.find((el) => el.id === selectedElementId)
-        if (!element) return
+        e.preventDefault()
 
-        const dx = e.clientX - resizeStart.x
-        const dy = e.clientY - resizeStart.y
+        const point = getOverlayPoint(e.clientX, e.clientY)
+        const overlaySize = getOverlaySize()
         const minSize = 30
 
-        let newWidth = resizeStart.width
-        let newHeight = resizeStart.height
-        let newX = element.x
-        let newY = element.y
+        let newX = resizeState.startX
+        let newY = resizeState.startY
+        let newWidth = resizeState.startWidth
+        let newHeight = resizeState.startHeight
 
-        if (resizingHandle.includes('e')) {
-          newWidth = Math.max(minSize, resizeStart.width + dx)
+        if (resizeState.handle.includes('e')) {
+          newWidth = clamp(
+            point.x - resizeState.startX,
+            minSize,
+            overlaySize.width - resizeState.startX,
+          )
         }
-        if (resizingHandle.includes('w')) {
-          newX = element.x + dx
-          newWidth = Math.max(minSize, resizeStart.width - dx)
+        if (resizeState.handle.includes('w')) {
+          const right = resizeState.startX + resizeState.startWidth
+          newX = clamp(point.x, 0, right - minSize)
+          newWidth = right - newX
         }
-        if (resizingHandle.includes('s')) {
-          newHeight = Math.max(minSize, resizeStart.height + dy)
+        if (resizeState.handle.includes('s')) {
+          newHeight = clamp(
+            point.y - resizeState.startY,
+            minSize,
+            overlaySize.height - resizeState.startY,
+          )
         }
-        if (resizingHandle.includes('n')) {
-          newY = element.y + dy
-          newHeight = Math.max(minSize, resizeStart.height - dy)
+        if (resizeState.handle.includes('n')) {
+          const bottom = resizeState.startY + resizeState.startHeight
+          newY = clamp(point.y, 0, bottom - minSize)
+          newHeight = bottom - newY
         }
 
-        onUpdateElement(selectedElementId!, {
-          x: Math.max(0, newX),
-          y: Math.max(0, newY),
+        onUpdateElement(resizeState.id, {
+          x: newX,
+          y: newY,
           width: newWidth,
           height: newHeight,
         })
       }
     }
 
-    const handleMouseUp = () => {
-      setDraggedElementId(null)
-      setResizingHandle(null)
+    const handlePointerUp = (e: PointerEvent) => {
+      if (dragState?.pointerId === e.pointerId) setDragState(null)
+      if (resizeState?.pointerId === e.pointerId) setResizeState(null)
     }
 
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
+    document.addEventListener('pointermove', handlePointerMove, { passive: false })
+    document.addEventListener('pointerup', handlePointerUp)
+    document.addEventListener('pointercancel', handlePointerUp)
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('pointerup', handlePointerUp)
+      document.removeEventListener('pointercancel', handlePointerUp)
     }
-  }, [draggedElementId, dragStart, resizingHandle, resizeStart, elements, selectedElementId, onUpdateElement])
+  }, [dragState, resizeState, elements, onUpdateElement])
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!selectedElementId) return
@@ -180,15 +248,10 @@ export function EditorOverlay({
             key={element.id}
             element={element}
             isSelected={element.id === selectedElementId}
-            isDragging={draggedElementId === element.id}
+            isDragging={dragState?.id === element.id}
             onSelect={() => onSelectElement(element.id)}
-            onDrag={(dx, dy) => {
-              onUpdateElement(element.id, {
-                x: element.x + dx,
-                y: element.y + dy,
-              })
-            }}
-            onResizeStart={(handle) => handleResizeStart(element.id, handle, event as any)}
+            onDragStart={(event) => handleElementDragStart(element.id, event)}
+            onResizeStart={(handle, event) => handleResizeStart(element.id, handle, event)}
             onContextMenu={(e) => {
               e.preventDefault()
               onShowContextMenu(element.id, e.clientX, e.clientY)

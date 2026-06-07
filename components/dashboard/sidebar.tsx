@@ -18,9 +18,11 @@ export function Sidebar() {
     <aside className="w-64 bg-card border-r border-border h-screen overflow-y-auto fixed left-0 top-0 pt-4">
       {/* Logo */}
       <Link href="/" className="flex items-center gap-2 px-6 mb-12">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-          <span className="text-white font-bold text-sm">FS</span>
-        </div>
+        <img
+          src="/flowsign-logo.png"
+          alt="FlowSign logo"
+          className="h-8 w-8 rounded-lg object-cover"
+        />
         <span className="font-bold text-lg text-foreground">FlowSign</span>
       </Link>
 
@@ -42,13 +44,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer section */}
-      <div className="absolute bottom-6 left-0 right-0 px-4 py-4 border-t border-border/50">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card/80 transition-all text-left">
-          <span className="text-lg">⚙️</span>
-          <span className="font-medium">Settings</span>
-        </button>
-      </div>
     </aside>
   )
 }

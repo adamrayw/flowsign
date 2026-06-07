@@ -1,16 +1,24 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { EditorElement, EditorState, ElementType, DEFAULT_ELEMENT_SIZES } from './editor-types'
 
-export function useEditorState(totalPages: number) {
+export function useEditorState(totalPages: number, initialElements: EditorElement[] = []) {
   const [state, setState] = useState<EditorState>({
-    elements: [],
+    elements: initialElements,
     selectedElementId: null,
     totalPages,
     currentPage: 1,
   })
 
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      totalPages,
+      currentPage: Math.max(1, Math.min(prev.currentPage, totalPages)),
+    }))
+  }, [totalPages])
+
   const addElement = useCallback(
-    (type: ElementType, x: number, y: number) => {
+    (type: ElementType, x: number, y: number, overrides: Partial<EditorElement> = {}) => {
       const sizes = DEFAULT_ELEMENT_SIZES[type]
       const newElement: EditorElement = {
         id: Math.random().toString(36).substr(2, 9),
@@ -21,6 +29,7 @@ export function useEditorState(totalPages: number) {
         ...sizes,
         rotation: 0,
         zIndex: Math.max(0, ...state.elements.map((e) => e.zIndex)) + 1,
+        ...overrides,
       }
       setState((prev) => ({
         ...prev,

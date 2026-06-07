@@ -3,7 +3,7 @@ import { Button } from './ui/button'
 
 export function Hero() {
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-background via-card to-background overflow-hidden flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-[calc(100vh-4rem)] bg-gradient-to-b from-background via-card to-background overflow-hidden flex flex-col justify-center items-center px-4 pt-20 pb-16 sm:px-6 lg:px-8">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-30"></div>
@@ -14,7 +14,7 @@ export function Hero() {
         {/* Badge */}
         <div className="mb-8 inline-block">
           <span className="px-4 py-2 rounded-full bg-primary/20 text-primary text-sm font-medium">
-            ✨ The Fastest Way to Sign Documents
+            ✨ The Fastest Way to Sign Documents · A Product by RayTech
           </span>
         </div>
 
@@ -29,32 +29,17 @@ export function Hero() {
         </p>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+        <div className="flex justify-center items-center">
           <Link href="/dashboard">
             <Button size="lg" className="text-base px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground">
               Start Signing Free
             </Button>
           </Link>
-          <button className="px-8 py-6 rounded-lg border border-border text-foreground hover:bg-card/50 transition-colors text-base font-medium">
-            Watch Demo
-          </button>
-        </div>
-
-        {/* Trust indicators */}
-        <div className="pt-8 border-t border-border/30">
-          <p className="text-sm text-muted-foreground mb-6">Trusted by professionals worldwide</p>
-          <div className="flex justify-center items-center gap-8 flex-wrap">
-            {['Acme', 'Global Co', 'Tech Inc', 'StartUp'].map((company) => (
-              <div key={company} className="text-muted-foreground font-medium opacity-50">
-                {company}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Preview of dashboard */}
-      <div className="relative mt-20 w-full max-w-5xl mx-auto">
+      <div className="relative mt-16 w-full max-w-5xl mx-auto">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-2xl blur-xl"></div>
         <div className="relative bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
           <div className="bg-gradient-to-r from-card to-background p-4 border-b border-border">

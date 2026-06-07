@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { PointerEvent } from 'react'
 import { Button } from './ui/button'
 
 interface SignatureCanvasProps {
@@ -8,60 +9,78 @@ interface SignatureCanvasProps {
   onSave: (signatureDataUrl: string) => void
 }
 
+type SignatureMode = 'draw' | 'type'
+
+const CANVAS_WIDTH = 720
+const CANVAS_HEIGHT = 260
+
 export function SignatureCanvas({ onClose, onSave }: SignatureCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
-  const [signatureMode, setSignatureMode] = useState<'draw' | 'type'>('draw')
+  const [signatureMode, setSignatureMode] = useState<SignatureMode>('draw')
   const [signatureText, setSignatureText] = useState('')
+  const [hasSignature, setHasSignature] = useState(false)
 
-  useEffect(() => {
+  const clearCanvas = () => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Set canvas size and fill with white background
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
-    ctx.fillStyle = 'white'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = '#0f172a'
-    ctx.lineWidth = 2
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-  }, [])
-
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    setIsDrawing(true)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasSignature(false)
   }
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return
-
+  const configureCanvas = () => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+
+    canvas.width = CANVAS_WIDTH
+    canvas.height = CANVAS_HEIGHT
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.strokeStyle = '#0f172a'
+    ctx.lineWidth = 4
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+  }
+
+  const getCanvasPoint = (event: PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
 
     const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
 
-    const ctx = canvas.getContext('2d')
+    return {
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
+    }
+  }
+
+  const startDrawing = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (signatureMode !== 'draw') return
+
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+
+    const point = getCanvasPoint(event)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    ctx.beginPath()
+    ctx.moveTo(point.x, point.y)
+    setIsDrawing(true)
+    setHasSignature(true)
+  }
+
+  const draw = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || signatureMode !== 'draw') return
+
+    const ctx = canvasRef.current?.getContext('2d')
     if (!ctx) return
 
-    ctx.lineTo(x, y)
+    const point = getCanvasPoint(event)
+    ctx.lineTo(point.x, point.y)
     ctx.stroke()
   }
 
@@ -69,60 +88,60 @@ export function SignatureCanvas({ onClose, onSave }: SignatureCanvasProps) {
     setIsDrawing(false)
   }
 
-  const clearCanvas = () => {
+  const drawSignatureText = (text: string) => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if (!text.trim()) {
+      setHasSignature(false)
+      return
+    }
 
-    ctx.fillStyle = 'white'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = '#0f172a'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = 'italic 76px "Brush Script MT", "Segoe Script", cursive'
+    ctx.fillText(text.trim(), canvas.width / 2, canvas.height / 2, canvas.width - 80)
+    setHasSignature(true)
+  }
+
+  const handleModeChange = (mode: SignatureMode) => {
+    setSignatureMode(mode)
+    clearCanvas()
+    if (mode === 'type' && signatureText.trim()) {
+      requestAnimationFrame(() => drawSignatureText(signatureText))
+    }
   }
 
   const handleSave = () => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas || !hasSignature) return
 
-    const dataUrl = canvas.toDataURL('image/png')
-    onSave(dataUrl)
-  }
-
-  const drawSignatureText = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    clearCanvas()
-    ctx.font = 'italic 48px cursive'
-    ctx.fillStyle = '#0f172a'
-    ctx.textAlign = 'center'
-    ctx.fillText(signatureText, canvas.width / 2, canvas.height / 2)
+    onSave(canvas.toDataURL('image/png'))
   }
 
   useEffect(() => {
-    if (signatureMode === 'type' && signatureText) {
-      drawSignatureText()
+    configureCanvas()
+  }, [])
+
+  useEffect(() => {
+    if (signatureMode === 'type') {
+      drawSignatureText(signatureText)
     }
   }, [signatureText, signatureMode])
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-card border-b border-border p-6">
-          <h2 className="text-2xl font-bold text-foreground mb-4">Add Your Signature</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+        <div className="border-b border-border p-6">
+          <h2 className="mb-4 text-2xl font-bold text-foreground">Add Your Signature</h2>
 
-          {/* Mode tabs */}
           <div className="flex gap-2">
             <button
-              onClick={() => {
-                setSignatureMode('draw')
-                clearCanvas()
-              }}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              onClick={() => handleModeChange('draw')}
+              className={`rounded-lg px-4 py-2 font-medium transition-colors ${
                 signatureMode === 'draw'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background text-muted-foreground hover:text-foreground'
@@ -131,8 +150,8 @@ export function SignatureCanvas({ onClose, onSave }: SignatureCanvasProps) {
               Draw
             </button>
             <button
-              onClick={() => setSignatureMode('type')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              onClick={() => handleModeChange('type')}
+              className={`rounded-lg px-4 py-2 font-medium transition-colors ${
                 signatureMode === 'type'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background text-muted-foreground hover:text-foreground'
@@ -143,53 +162,50 @@ export function SignatureCanvas({ onClose, onSave }: SignatureCanvasProps) {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {signatureMode === 'draw' ? (
-            <>
-              <canvas
-                ref={canvasRef}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                className="w-full h-64 border-2 border-dashed border-border rounded-lg cursor-crosshair bg-white"
-              />
-              <button
-                onClick={clearCanvas}
-                className="w-full px-4 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-              >
-                Clear
-              </button>
-            </>
-          ) : (
-            <div className="space-y-4">
-              <input
-                type="text"
-                value={signatureText}
-                onChange={(e) => setSignatureText(e.target.value)}
-                placeholder="Type your signature"
-                className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <canvas
-                ref={canvasRef}
-                className="w-full h-64 border-2 border-border rounded-lg bg-white"
-              />
-            </div>
+        <div className="space-y-4 p-6">
+          {signatureMode === 'type' && (
+            <input
+              type="text"
+              value={signatureText}
+              onChange={(event) => setSignatureText(event.target.value)}
+              placeholder="Type your signature"
+              className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           )}
+
+          <canvas
+            ref={canvasRef}
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerCancel={stopDrawing}
+            onPointerLeave={stopDrawing}
+            className={`h-64 w-full rounded-lg border-2 bg-white ${
+              signatureMode === 'draw'
+                ? 'cursor-crosshair touch-none border-dashed border-border'
+                : 'border-border'
+            }`}
+          />
+
+          <button
+            onClick={clearCanvas}
+            className="w-full rounded-lg border border-border px-4 py-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+          >
+            Clear
+          </button>
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-border p-6 flex gap-3 justify-end bg-card">
+        <div className="flex justify-end gap-3 border-t border-border bg-card p-6">
           <button
             onClick={onClose}
-            className="px-6 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-background transition-colors font-medium"
+            className="rounded-lg border border-border px-6 py-2 font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           >
             Cancel
           </button>
           <Button
             onClick={handleSave}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2"
+            disabled={!hasSignature}
+            className="bg-primary px-6 py-2 text-primary-foreground hover:bg-primary/90"
           >
             Save Signature
           </Button>

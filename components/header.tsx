@@ -8,23 +8,25 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">FS</span>
-            </div>
+            <img
+              src="/flowsign-logo.png"
+              alt="FlowSign logo"
+              className="h-8 w-8 rounded-lg object-cover"
+            />
             <span className="font-bold text-lg text-foreground hidden sm:inline">FlowSign</span>
           </Link>
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/#features" className="text-muted-foreground hover:text-foreground transition-colors">
               Features
-            </a>
-            <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link href="/#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
               How It Works
-            </a>
-            <a href="#use-cases" className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link href="/#use-cases" className="text-muted-foreground hover:text-foreground transition-colors">
               Use Cases
-            </a>
+            </Link>
           </nav>
 
           {/* CTA */}

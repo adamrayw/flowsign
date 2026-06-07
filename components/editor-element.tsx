@@ -1,3 +1,4 @@
+import type { MouseEvent, PointerEvent } from 'react'
 import { EditorElement, ELEMENT_COLORS } from '@/lib/editor-types'
 
 interface EditorElementProps {
@@ -5,37 +6,61 @@ interface EditorElementProps {
   isSelected: boolean
   isDragging: boolean
   onSelect: () => void
-  onDrag?: (dx: number, dy: number) => void
-  onResizeStart?: (handle: string) => void
-  onContextMenu?: (e: React.MouseEvent) => void
+  onDragStart?: (event: PointerEvent<HTMLDivElement>) => void
+  onResizeStart?: (handle: string, event: PointerEvent<HTMLDivElement>) => void
+  onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void
 }
+
+const RESIZE_HANDLES = [
+  { handle: 'nw', className: 'left-1 top-1 cursor-nwse-resize' },
+  { handle: 'n', className: 'left-1/2 top-1 -translate-x-1/2 cursor-ns-resize' },
+  { handle: 'ne', className: 'right-1 top-1 cursor-nesw-resize' },
+  { handle: 'e', className: 'right-1 top-1/2 -translate-y-1/2 cursor-ew-resize' },
+  { handle: 'se', className: 'right-1 bottom-1 cursor-nwse-resize' },
+  { handle: 's', className: 'left-1/2 bottom-1 -translate-x-1/2 cursor-ns-resize' },
+  { handle: 'sw', className: 'left-1 bottom-1 cursor-nesw-resize' },
+  { handle: 'w', className: 'left-1 top-1/2 -translate-y-1/2 cursor-ew-resize' },
+]
 
 export function EditorElementComponent({
   element,
   isSelected,
   isDragging,
   onSelect,
-  onDrag,
+  onDragStart,
   onResizeStart,
   onContextMenu,
 }: EditorElementProps) {
   const color = ELEMENT_COLORS[element.type]
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
     e.stopPropagation()
     onSelect()
+    onDragStart?.(e)
   }
 
-  const handleResizeMouseDown = (handle: string, e: React.MouseEvent) => {
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
-    onResizeStart?.(handle)
+  }
+
+  const handleContextMenu = (e: MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    onContextMenu?.(e)
+  }
+
+  const handleResizePointerDown = (handle: string, e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    onResizeStart?.(handle, e)
   }
 
   return (
     <div
-      onClick={handleMouseDown}
-      onContextMenu={onContextMenu}
-      className={`absolute transition-all ${isDragging ? '' : 'cursor-move'} group`}
+      onPointerDown={handlePointerDown}
+      onMouseDown={handleMouseDown}
+      onContextMenu={handleContextMenu}
+      className={`absolute ${isDragging ? '' : 'cursor-move'} group select-none touch-none`}
       style={{
         left: `${element.x}px`,
         top: `${element.y}px`,
@@ -57,27 +82,23 @@ export function EditorElementComponent({
           cursor: isDragging ? 'grabbing' : 'grab',
         }}
       >
-        {/* Resize Handles */}
-        {isSelected && (
-          <>
-            {['nw', 'ne', 'sw', 'se'].map((handle) => (
-              <div
-                key={handle}
-                onMouseDown={(e) => handleResizeMouseDown(handle, e)}
-                className="absolute w-3 h-3 bg-white border border-primary rounded-full cursor-pointer"
-                style={{
-                  [handle.includes('n') ? 'top' : 'bottom']: '-6px',
-                  [handle.includes('w') ? 'left' : 'right']: '-6px',
-                }}
-              />
-            ))}
-          </>
-        )}
-
         {/* Element Content */}
-        <div className="text-center px-2 py-1 pointer-events-none truncate">
+        <div
+          className={`h-full w-full text-center pointer-events-none truncate ${
+            element.type === 'signature' ? 'p-1' : 'px-2 py-1'
+          }`}
+        >
           {element.type === 'signature' && (
-            <div className="text-xs">Signature</div>
+            element.content ? (
+              <img
+                src={element.content}
+                alt="Signature"
+                className="h-full w-full object-contain"
+                draggable={false}
+              />
+            ) : (
+              <div className="text-xs">Signature</div>
+            )
           )}
           {element.type === 'initial' && (
             <div className="text-xs">Initial</div>
@@ -92,6 +113,20 @@ export function EditorElementComponent({
             <div className="text-xs">Stamp</div>
           )}
         </div>
+
+        {/* Resize Handles */}
+        {isSelected && (
+          <>
+            <div className="pointer-events-none absolute inset-0 z-20 rounded border border-primary/80 bg-primary/5" />
+            {RESIZE_HANDLES.map(({ handle, className }) => (
+              <div
+                key={handle}
+                onPointerDown={(e) => handleResizePointerDown(handle, e)}
+                className={`absolute z-30 h-5 w-5 rounded-full border-2 border-primary bg-white shadow-lg ring-2 ring-slate-900/30 ${className}`}
+              />
+            ))}
+          </>
+        )}
       </div>
     </div>
   )

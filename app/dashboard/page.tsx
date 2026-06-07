@@ -1,81 +1,147 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { EditorElement } from '@/lib/editor-types'
+
+interface StoredDocument {
+  id: string
+  name: string
+  uploadedAt: string
+  signedAt?: string
+  signatures: number
+  elements?: EditorElement[]
+  originalPdfDataUrl?: string
+  signedPdfDataUrl?: string
+}
 
 export default function DashboardHome() {
-  const [dragActive, setDragActive] = useState(false)
+  const router = useRouter()
+  const [documents, setDocuments] = useState<StoredDocument[]>([])
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
-    } else if (e.type === 'dragleave') {
-      setDragActive(false)
+  useEffect(() => {
+    const stored = localStorage.getItem('flowsign_documents')
+    if (!stored) return
+
+    try {
+      setDocuments(JSON.parse(stored))
+    } catch (error) {
+      console.error('[v0] Error parsing stored documents:', error)
     }
-  }
+  }, [])
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    const files = e.dataTransfer.files
-    console.log('[v0] Files dropped:', files)
+  const totalSignatures = documents.reduce((total, doc) => total + doc.signatures, 0)
+  const latestDocument = documents
+    .filter((doc) => doc.signedAt)
+    .sort((a, b) => new Date(b.signedAt!).getTime() - new Date(a.signedAt!).getTime())[0]
+  const recentDocuments = documents
+    .slice()
+    .sort((a, b) => new Date(b.signedAt || b.uploadedAt).getTime() - new Date(a.signedAt || a.uploadedAt).getTime())
+    .slice(0, 5)
+
+  const handleOpenDocument = (document: StoredDocument) => {
+    if (!document.originalPdfDataUrl && !document.signedPdfDataUrl) {
+      alert('This document cannot be opened for editing. Please sign it again from the original PDF.')
+      return
+    }
+
+    localStorage.setItem('flowsign_edit_document', JSON.stringify(document))
+    router.push('/dashboard/sign')
   }
 
   return (
     <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="text-center py-12">
-        <h2 className="text-3xl font-bold text-foreground mb-3">Upload a Document</h2>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Upload your PDF file and start signing in seconds. Your documents are processed locally on your device.
-        </p>
-      </div>
-
-      {/* Upload Zone */}
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-2xl p-16 text-center transition-all ${
-          dragActive
-            ? 'border-primary bg-primary/5'
-            : 'border-border hover:border-primary/50'
-        }`}
-      >
-        <div className="flex flex-col items-center gap-4">
-          <div className="text-6xl">📄</div>
+      <div className="rounded-2xl border border-border bg-card p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-lg font-semibold text-foreground mb-1">
-              Drag and drop your PDF here
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-primary">
+              Dashboard
             </p>
-            <p className="text-muted-foreground mb-6">or click to browse files</p>
+            <h2 className="mb-3 text-3xl font-bold text-foreground">Document signing overview</h2>
+            <p className="max-w-2xl text-muted-foreground">
+              Track signed documents, review recent activity, and start a new signature flow from one place.
+            </p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            Choose File
-          </Button>
-          <p className="text-sm text-muted-foreground mt-2">
-            Supports PDF files up to 50MB
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link href="/dashboard/sign">
+              <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto">
+                ✍️ Sign New Document
+              </Button>
+            </Link>
+            <Link href="/dashboard/documents">
+              <Button variant="outline" className="w-full sm:w-auto">
+                View Documents
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {[
-          { icon: '🔒', title: 'Private', desc: 'Your documents stay on your device' },
-          { icon: '✍️', title: 'Sign Instantly', desc: 'Draw, type, or upload signatures' },
-          { icon: '⚡', title: 'Fast Processing', desc: 'Sign multiple documents in seconds' },
-        ].map((feature, i) => (
-          <div key={i} className="p-6 rounded-xl bg-card border border-border/50">
-            <div className="text-3xl mb-3">{feature.icon}</div>
-            <h3 className="font-bold text-foreground mb-2">{feature.title}</h3>
-            <p className="text-sm text-muted-foreground">{feature.desc}</p>
+          { label: 'Signed Documents', value: documents.length, icon: '📄' },
+          { label: 'Signatures Added', value: totalSignatures, icon: '✍️' },
+          {
+            label: 'Latest Activity',
+            value: latestDocument ? new Date(latestDocument.signedAt!).toLocaleDateString() : '—',
+            icon: '🕒',
+          },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-border/50 bg-card p-6">
+            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">
+              {item.icon}
+            </div>
+            <div className="text-3xl font-bold text-foreground">{item.value}</div>
+            <div className="mt-1 text-sm text-muted-foreground">{item.label}</div>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-xl border border-border/50 bg-card p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Recent Documents</h3>
+            <p className="text-sm text-muted-foreground">Last signed documents saved locally.</p>
+          </div>
+          <Link href="/dashboard/documents" className="text-sm font-medium text-primary hover:underline">
+            View all
+          </Link>
+        </div>
+
+        {recentDocuments.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border p-8 text-center">
+            <div className="mb-3 text-4xl">📚</div>
+            <p className="font-semibold text-foreground">No signed documents yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Use Sign New Document to create your first signed PDF.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between rounded-lg border border-border/50 bg-background p-4"
+              >
+                <div>
+                  <p className="font-semibold text-foreground">{doc.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Signed {doc.signedAt ? new Date(doc.signedAt).toLocaleDateString() : '—'} · {doc.signatures} signature(s)
+                  </p>
+                </div>
+                <Button
+                  onClick={() => handleOpenDocument(doc)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Open
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

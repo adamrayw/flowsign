@@ -10,6 +10,18 @@ This repository is linked to a [v0](https://v0.app) project. You can continue de
 
 ## Getting Started
 
+Copy the environment file and point FlowSign to RayTech Account Platform:
+
+```bash
+cp .env.example .env.local
+```
+
+```env
+NEXT_PUBLIC_AUTH_URL="http://localhost:3000"
+```
+
+For local SSO, make sure the FlowSign origin is included in `TRUSTED_ORIGINS` on `raytech-account-platform`.
+
 First, run the development server:
 
 ```bash

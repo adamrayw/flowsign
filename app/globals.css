@@ -49,72 +49,72 @@
 }
 
 :root {
-  --background: 255 255 255;
-  --foreground: 15 23 42;
-  --card: 248 250 252;
-  --card-foreground: 15 23 42;
-  --popover: 255 255 255;
-  --popover-foreground: 15 23 42;
-  --primary: 15 23 42;
-  --primary-foreground: 255 255 255;
-  --secondary: 245 158 11;
-  --secondary-foreground: 255 255 255;
-  --muted: 226 232 240;
-  --muted-foreground: 71 85 105;
-  --accent: 251 146 60;
-  --accent-foreground: 255 255 255;
-  --destructive: 239 68 68;
-  --border: 226 232 240;
-  --input: 226 232 240;
-  --ring: 251 146 60;
-  --chart-1: 251 146 60;
-  --chart-2: 245 158 11;
-  --chart-3: 59 130 246;
-  --chart-4: 139 92 246;
-  --chart-5: 236 72 153;
+  --background: rgb(255 255 255);
+  --foreground: rgb(15 23 42);
+  --card: rgb(248 250 252);
+  --card-foreground: rgb(15 23 42);
+  --popover: rgb(255 255 255);
+  --popover-foreground: rgb(15 23 42);
+  --primary: rgb(15 23 42);
+  --primary-foreground: rgb(255 255 255);
+  --secondary: rgb(245 158 11);
+  --secondary-foreground: rgb(255 255 255);
+  --muted: rgb(226 232 240);
+  --muted-foreground: rgb(71 85 105);
+  --accent: rgb(251 146 60);
+  --accent-foreground: rgb(255 255 255);
+  --destructive: rgb(239 68 68);
+  --border: rgb(226 232 240);
+  --input: rgb(226 232 240);
+  --ring: rgb(251 146 60);
+  --chart-1: rgb(251 146 60);
+  --chart-2: rgb(245 158 11);
+  --chart-3: rgb(59 130 246);
+  --chart-4: rgb(139 92 246);
+  --chart-5: rgb(236 72 153);
   --radius: 0.5rem;
-  --sidebar: 248 250 252;
-  --sidebar-foreground: 15 23 42;
-  --sidebar-primary: 251 146 60;
-  --sidebar-primary-foreground: 255 255 255;
-  --sidebar-accent: 245 158 11;
-  --sidebar-accent-foreground: 255 255 255;
-  --sidebar-border: 226 232 240;
-  --sidebar-ring: 251 146 60;
+  --sidebar: rgb(248 250 252);
+  --sidebar-foreground: rgb(15 23 42);
+  --sidebar-primary: rgb(251 146 60);
+  --sidebar-primary-foreground: rgb(255 255 255);
+  --sidebar-accent: rgb(245 158 11);
+  --sidebar-accent-foreground: rgb(255 255 255);
+  --sidebar-border: rgb(226 232 240);
+  --sidebar-ring: rgb(251 146 60);
 }
 
 .dark {
-  --background: 15 23 42;
-  --foreground: 226 232 240;
-  --card: 30 41 59;
-  --card-foreground: 226 232 240;
-  --popover: 30 41 59;
-  --popover-foreground: 226 232 240;
-  --primary: 251 146 60;
-  --primary-foreground: 15 23 42;
-  --secondary: 245 158 11;
-  --secondary-foreground: 15 23 42;
-  --muted: 71 85 105;
-  --muted-foreground: 148 163 184;
-  --accent: 244 63 94;
-  --accent-foreground: 226 232 240;
-  --destructive: 239 68 68;
-  --border: 51 65 85;
-  --input: 51 65 85;
-  --ring: 251 146 60;
-  --chart-1: 251 146 60;
-  --chart-2: 245 158 11;
-  --chart-3: 59 130 246;
-  --chart-4: 139 92 246;
-  --chart-5: 236 72 153;
-  --sidebar: 30 41 59;
-  --sidebar-foreground: 226 232 240;
-  --sidebar-primary: 251 146 60;
-  --sidebar-primary-foreground: 15 23 42;
-  --sidebar-accent: 245 158 11;
-  --sidebar-accent-foreground: 15 23 42;
-  --sidebar-border: 51 65 85;
-  --sidebar-ring: 251 146 60;
+  --background: rgb(15 23 42);
+  --foreground: rgb(226 232 240);
+  --card: rgb(30 41 59);
+  --card-foreground: rgb(226 232 240);
+  --popover: rgb(30 41 59);
+  --popover-foreground: rgb(226 232 240);
+  --primary: rgb(251 146 60);
+  --primary-foreground: rgb(15 23 42);
+  --secondary: rgb(245 158 11);
+  --secondary-foreground: rgb(15 23 42);
+  --muted: rgb(71 85 105);
+  --muted-foreground: rgb(148 163 184);
+  --accent: rgb(244 63 94);
+  --accent-foreground: rgb(226 232 240);
+  --destructive: rgb(239 68 68);
+  --border: rgb(51 65 85);
+  --input: rgb(51 65 85);
+  --ring: rgb(251 146 60);
+  --chart-1: rgb(251 146 60);
+  --chart-2: rgb(245 158 11);
+  --chart-3: rgb(59 130 246);
+  --chart-4: rgb(139 92 246);
+  --chart-5: rgb(236 72 153);
+  --sidebar: rgb(30 41 59);
+  --sidebar-foreground: rgb(226 232 240);
+  --sidebar-primary: rgb(251 146 60);
+  --sidebar-primary-foreground: rgb(15 23 42);
+  --sidebar-accent: rgb(245 158 11);
+  --sidebar-accent-foreground: rgb(15 23 42);
+  --sidebar-border: rgb(51 65 85);
+  --sidebar-ring: rgb(251 146 60);
 }
 
 @layer base {
@@ -125,6 +125,7 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans scroll-smooth;
+    scroll-padding-top: 5rem;
   }
 }
