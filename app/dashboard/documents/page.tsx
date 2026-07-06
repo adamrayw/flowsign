@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { EditorElement } from '@/lib/editor-types'
+import { getStorageItem, setStorageItem } from '@/lib/storage'
 
 interface StoredDocument {
   id: string
@@ -24,22 +25,25 @@ export default function DocumentsPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate loading documents from storage
-    setIsLoading(false)
-    const stored = localStorage.getItem('flowsign_documents')
-    if (stored) {
+    const loadDocs = async () => {
       try {
-        setDocuments(JSON.parse(stored))
+        const stored = await getStorageItem<StoredDocument[]>('flowsign_documents')
+        if (stored) {
+          setDocuments(stored)
+        }
       } catch (error) {
         console.error('[v0] Error parsing stored documents:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
+    loadDocs()
   }, [])
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     setDocuments((prev) => prev.filter((doc) => doc.id !== id))
     const remaining = documents.filter((doc) => doc.id !== id)
-    localStorage.setItem('flowsign_documents', JSON.stringify(remaining))
+    await setStorageItem('flowsign_documents', remaining)
   }
 
   const handleDownload = (doc: StoredDocument) => {
@@ -57,13 +61,13 @@ export default function DocumentsPage() {
     link.remove()
   }
 
-  const handleEdit = (doc: StoredDocument) => {
+  const handleEdit = async (doc: StoredDocument) => {
     if (!doc.originalPdfDataUrl && !doc.signedPdfDataUrl) {
       alert('This document cannot be edited. Please sign it again from the original PDF.')
       return
     }
 
-    localStorage.setItem('flowsign_edit_document', JSON.stringify(doc))
+    await setStorageItem('flowsign_edit_document', doc)
     router.push('/dashboard/sign')
   }
 

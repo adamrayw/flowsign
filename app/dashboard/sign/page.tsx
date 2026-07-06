@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PDFEditor } from '@/components/pdf-editor'
 import { EditorElement } from '@/lib/editor-types'
+import { getStorageItem, setStorageItem, removeStorageItem } from '@/lib/storage'
 
 interface EditableDocument {
   id: string
@@ -38,23 +39,26 @@ export default function SignPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('flowsign_edit_document')
-    if (!stored) return
+    const loadDoc = async () => {
+      try {
+        const stored = await getStorageItem<EditableDocument>('flowsign_edit_document')
+        if (!stored) return
+        
+        const documentToEdit = stored
+        const editablePdfUrl = documentToEdit.originalPdfDataUrl || documentToEdit.signedPdfDataUrl
+        if (!editablePdfUrl) return
 
-    try {
-      const documentToEdit = JSON.parse(stored) as EditableDocument
-      const editablePdfUrl = documentToEdit.originalPdfDataUrl || documentToEdit.signedPdfDataUrl
-      if (!editablePdfUrl) return
-
-      setEditingDocument(documentToEdit)
-      setDocumentName(documentToEdit.name)
-      setPdfUrl(editablePdfUrl)
-      setSourcePdfDataUrl(editablePdfUrl)
-      setInitialElements(documentToEdit.originalPdfDataUrl ? documentToEdit.elements || [] : [])
-      localStorage.removeItem('flowsign_edit_document')
-    } catch (error) {
-      console.error('[v0] Error loading document for edit:', error)
+        setEditingDocument(documentToEdit)
+        setDocumentName(documentToEdit.name)
+        setPdfUrl(editablePdfUrl)
+        setSourcePdfDataUrl(editablePdfUrl)
+        setInitialElements(documentToEdit.originalPdfDataUrl ? documentToEdit.elements || [] : [])
+        await removeStorageItem('flowsign_edit_document')
+      } catch (error) {
+        console.error('[v0] Error loading document for edit:', error)
+      }
     }
+    loadDoc()
   }, [])
 
   const loadPdfFile = async (selectedFile: File) => {
@@ -107,10 +111,10 @@ export default function SignPage() {
     }
   }
 
-  const handleEditorFinish = (elements: EditorElement[], signedPdfDataUrl: string) => {
+  const handleEditorFinish = async (elements: EditorElement[], signedPdfDataUrl: string) => {
     console.log('[v0] Signing complete with elements:', elements)
     
-    // Save document to localStorage
+    // Save document to IndexedDB
     const documentId = editingDocument?.id || Math.random().toString(36).substr(2, 9)
     const document: EditableDocument = {
       id: documentId,
@@ -124,8 +128,8 @@ export default function SignPage() {
       status: 'signed',
     }
     
-    const stored = localStorage.getItem('flowsign_documents')
-    const documents = (stored ? JSON.parse(stored) : []) as EditableDocument[]
+    const stored = await getStorageItem<EditableDocument[]>('flowsign_documents')
+    const documents = stored || []
     const documentIndex = documents.findIndex((doc) => doc.id === documentId)
 
     if (documentIndex >= 0) {
@@ -134,11 +138,11 @@ export default function SignPage() {
       documents.push(document)
     }
 
-    localStorage.setItem('flowsign_documents', JSON.stringify(documents))
+    await setStorageItem('flowsign_documents', documents)
     setShowSuccessModal(true)
   }
 
-  const handleSaveDraft = (elements: EditorElement[]) => {
+  const handleSaveDraft = async (elements: EditorElement[]) => {
     const documentId = editingDocument?.id || Math.random().toString(36).substr(2, 9)
     const document: EditableDocument = {
       id: documentId,
@@ -152,8 +156,8 @@ export default function SignPage() {
       status: 'draft',
     }
 
-    const stored = localStorage.getItem('flowsign_documents')
-    const documents = (stored ? JSON.parse(stored) : []) as EditableDocument[]
+    const stored = await getStorageItem<EditableDocument[]>('flowsign_documents')
+    const documents = stored || []
     const documentIndex = documents.findIndex((doc) => doc.id === documentId)
 
     if (documentIndex >= 0) {
@@ -162,7 +166,7 @@ export default function SignPage() {
       documents.push(document)
     }
 
-    localStorage.setItem('flowsign_documents', JSON.stringify(documents))
+    await setStorageItem('flowsign_documents', documents)
     setEditingDocument(document)
     alert('Draft saved successfully.')
   }

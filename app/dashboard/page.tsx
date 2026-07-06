@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { EditorElement } from '@/lib/editor-types'
+import { getStorageItem, setStorageItem } from '@/lib/storage'
 
 interface StoredDocument {
   id: string
@@ -22,14 +23,17 @@ export default function DashboardHome() {
   const [documents, setDocuments] = useState<StoredDocument[]>([])
 
   useEffect(() => {
-    const stored = localStorage.getItem('flowsign_documents')
-    if (!stored) return
-
-    try {
-      setDocuments(JSON.parse(stored))
-    } catch (error) {
-      console.error('[v0] Error parsing stored documents:', error)
+    const loadDocuments = async () => {
+      try {
+        const stored = await getStorageItem<StoredDocument[]>('flowsign_documents')
+        if (stored) {
+          setDocuments(stored)
+        }
+      } catch (error) {
+        console.error('[v0] Error parsing stored documents:', error)
+      }
     }
+    loadDocuments()
   }, [])
 
   const totalSignatures = documents.reduce((total, doc) => total + doc.signatures, 0)
@@ -41,13 +45,13 @@ export default function DashboardHome() {
     .sort((a, b) => new Date(b.signedAt || b.uploadedAt).getTime() - new Date(a.signedAt || a.uploadedAt).getTime())
     .slice(0, 5)
 
-  const handleOpenDocument = (document: StoredDocument) => {
+  const handleOpenDocument = async (document: StoredDocument) => {
     if (!document.originalPdfDataUrl && !document.signedPdfDataUrl) {
       alert('This document cannot be opened for editing. Please sign it again from the original PDF.')
       return
     }
 
-    localStorage.setItem('flowsign_edit_document', JSON.stringify(document))
+    await setStorageItem('flowsign_edit_document', document)
     router.push('/dashboard/sign')
   }
 
